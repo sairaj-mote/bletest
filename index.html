@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Web App</title>
+</head>
+
+<body>
+    <h1>BLE Web App</h1>
+    <button id="connectButton">Connect to BLE Device</button>
+    <button id="sendButton" disabled>Send 0</button>
+    <button id="sendButton1" disabled>Send 1</button>
+
+    <script>
+        let device;
+        let characteristic;
+        const serviceUuid = 'heart_rate';
+        const characteristicUuid = 'heart_rate_measurement';
+        document.getElementById('connectButton').addEventListener('click', async () => {
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [serviceUuid] }]
+                });
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(serviceUuid);
+                characteristic = await service.getCharacteristic(characteristicUuid);
+
+                document.getElementById('sendButton').disabled = false;
+                document.getElementById('sendButton1').disabled = false;
+            } catch (error) {
+                console.error('Error connecting to BLE device:', error);
+            }
+        });
+
+        document.getElementById('sendButton').addEventListener('click', () => {
+            sendValue(0);
+        });
+
+        document.getElementById('sendButton1').addEventListener('click', () => {
+            sendValue(1);
+        });
+
+        async function sendValue(value) {
+            try {
+                const encoder = new TextEncoder('utf-8');
+                const data = encoder.encode(value.toString());
+                await characteristic.writeValue(data);
+                console.log('Value sent:', value);
+            } catch (error) {
+                console.error('Error sending value:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
