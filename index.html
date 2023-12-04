@@ -13,6 +13,7 @@
     <input type="text" id="value_input" disabled>
     <input type="color" name="" id="color_input">
     <button id="sendButton" disabled>Send</button>
+    <div id="receivedValue"></div>
     <script>
         let device;
         let characteristic;
@@ -32,6 +33,9 @@
                 document.getElementById('connectButton').disabled = true;
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
+                // Subscribe to characteristic notifications
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
             }
@@ -57,6 +61,13 @@
             } catch (error) {
                 console.error('Error sending value:', error);
             }
+        }
+        function handleNotifications(event) {
+            const value = new TextDecoder('utf-8').decode(event.target.value.buffer);
+            console.log('Received value:', value);
+
+            // Update the UI to display the received value
+            document.getElementById('receivedValue').innerText = `Received Value: ${value}`;
         }
     </script>
 </body>
