@@ -17,8 +17,10 @@
     <script>
         let device;
         let characteristic;
-        const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        const characteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        // const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+        // const characteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        const serviceUuid = 'heart_rate';
+        const characteristicUuid = 'heart_rate_measurement';
         document.getElementById('connectButton').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
@@ -36,6 +38,8 @@
                 // Subscribe to characteristic notifications
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+                // Add disconnection listener
+                device.addEventListener('gattserverdisconnected', handleDisconnect);
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
             }
@@ -54,20 +58,29 @@
         });
         async function sendValue(value) {
             try {
-                const encoder = new TextEncoder('utf-8');
-                const data = encoder.encode(value.toString());
-                await characteristic.writeValue(data);
+                const data = new TextEncoder('utf-8').encode(value);
+                await characteristic.writeValueWithResponse(data);
                 console.log('Value sent:', value);
             } catch (error) {
                 console.error('Error sending value:', error);
             }
         }
         function handleNotifications(event) {
+            console.log('Received value:', event.target.value)
             const value = new TextDecoder('utf-8').decode(event.target.value.buffer);
             console.log('Received value:', value);
 
             // Update the UI to display the received value
             document.getElementById('receivedValue').innerText = `Received Value: ${value}`;
+        }
+        function handleDisconnect(event) {
+            console.log('Disconnected from BLE device:', event);
+            document.getElementById('connectButton').disabled = false;
+            document.getElementById('sendButton').disabled = true;
+            document.getElementById('value_input').disabled = true;
+            characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
+            device.removeEventListener('gattserverdisconnected', handleDisconnect);
+            device = null;
         }
     </script>
 </body>
