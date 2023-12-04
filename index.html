@@ -21,7 +21,7 @@
         document.getElementById('connectButton').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
-                    allowAllDevices: true,
+                    acceptAllDevices: true,
                     optionalServices: [serviceUuid],
                 });
 
