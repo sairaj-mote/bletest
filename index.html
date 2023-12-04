@@ -24,6 +24,7 @@
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
+                    optionalServices: ["heart_rate"]
                 });
 
                 const server = await device.gatt.connect();
