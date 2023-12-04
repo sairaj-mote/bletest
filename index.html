@@ -4,35 +4,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE Web App</title>
+    <title>Dynamic BLE Web App</title>
 </head>
 
 <body>
-    <h1>BLE Web App</h1>
+    <h1>Dynamic BLE Web App</h1>
     <button id="connectButton">Connect to BLE Device</button>
+    <select id="serviceSelector" disabled></select>
+    <select id="characteristicSelector" disabled></select>
     <button id="sendButton" disabled>Send 0</button>
     <button id="sendButton1" disabled>Send 1</button>
 
     <script>
         let device;
-        let characteristic;
-        const serviceUuid = 'heart_rate';
-        const characteristicUuid = 'heart_rate_measurement';
+        let selectedService;
+        let selectedCharacteristic;
+
         document.getElementById('connectButton').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
-                    filters: [{ services: [serviceUuid] }]
+                    filters: [{ services: ['heart_rate'] }]
                 });
 
                 const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(serviceUuid);
-                characteristic = await service.getCharacteristic(characteristicUuid);
 
-                document.getElementById('sendButton').disabled = false;
-                document.getElementById('sendButton1').disabled = false;
+                // Dynamic service discovery
+                const services = await server.getPrimaryServices();
+                const serviceSelector = document.getElementById('serviceSelector');
+                serviceSelector.innerHTML = '<option value="">Select Service</option>';
+                services.forEach((service) => {
+                    const option = document.createElement('option');
+                    option.value = service.uuid;
+                    option.text = service.uuid;
+                    serviceSelector.appendChild(option);
+                });
+                serviceSelector.disabled = false;
+
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
             }
+        });
+
+        document.getElementById('serviceSelector').addEventListener('change', async (event) => {
+            selectedService = event.target.value;
+
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService(selectedService);
+
+            // Dynamic characteristic discovery
+            const characteristics = await service.getCharacteristics();
+            const characteristicSelector = document.getElementById('characteristicSelector');
+            characteristicSelector.innerHTML = '<option value="">Select Characteristic</option>';
+            characteristics.forEach((characteristic) => {
+                const option = document.createElement('option');
+                option.value = characteristic.uuid;
+                option.text = characteristic.uuid;
+                characteristicSelector.appendChild(option);
+            });
+            characteristicSelector.disabled = false;
+        });
+
+        document.getElementById('characteristicSelector').addEventListener('change', (event) => {
+            selectedCharacteristic = event.target.value;
+            document.getElementById('sendButton').disabled = false;
+            document.getElementById('sendButton1').disabled = false;
         });
 
         document.getElementById('sendButton').addEventListener('click', () => {
@@ -45,6 +80,10 @@
 
         async function sendValue(value) {
             try {
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(selectedService);
+                const characteristic = await service.getCharacteristic(selectedCharacteristic);
+
                 const encoder = new TextEncoder('utf-8');
                 const data = encoder.encode(value.toString());
                 await characteristic.writeValue(data);
