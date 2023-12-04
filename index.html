@@ -14,7 +14,7 @@
     <select id="characteristicSelector" disabled></select>
     <button id="sendButton" disabled>Send 0</button>
     <button id="sendButton1" disabled>Send 1</button>
-
+    <div id="error_display"></div>
     <script>
         let device;
         let selectedService;
@@ -42,6 +42,7 @@
 
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
+                document.getElementById('error_display').textContent = error;
             }
         });
 
