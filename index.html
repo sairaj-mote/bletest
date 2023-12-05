@@ -17,10 +17,10 @@
     <script>
         let device;
         let characteristic;
-        // const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        // const characteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-        const serviceUuid = 'heart_rate';
-        const characteristicUuid = 'heart_rate_measurement';
+        const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+        const characteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        // const serviceUuid = 'heart_rate';
+        // const characteristicUuid = 'heart_rate_measurement';
         document.getElementById('connectButton').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
