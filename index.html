@@ -34,22 +34,33 @@
             </svg>
             <h3>Huey</h3>
         </div>
-        <button id="connect_Button" class="button button--primary">Connect to Huey</button>
+        <button id="connect_button" class="button button--primary">Connect to Huey</button>
     </header>
-    <section id="settings_section" class="flex gap-1-5 flex-direction-column" data-disabled inert>
-        <h2>Settings</h2>
-        <sm-switch data-id="power" onchange="handleToggle(event)">
-            <h4 slot="left" class="margin-right-1">Turn on power</h4>
-        </sm-switch>
-        <sm-switch data-id="zone-1" onchange="handleToggle(event)" disabled>
-            <h4 slot="left" class="margin-right-1">Zone 1</h4>
-        </sm-switch>
-        <sm-switch data-id="zone-2" onchange="handleToggle(event)" disabled>
-            <h4 slot="left" class="margin-right-1">Zone 2</h4>
-        </sm-switch>
-        <div class="flex align-center space-between gap-1-5">
-            <h4>Select color</h4>
-            <sl-color-picker id="color_input" value="#FF55A7" label=" Select a color" disabled></sl-color-picker>
+    <section id="settings_section" class="flex gap-2 flex-direction-column" data-disabled inert>
+        <div id="battery_indicator_wrapper">
+            <svg id="battery_indicator" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="32" />
+            </svg>
+            <div class="flex flex-direction-column align-center">
+                <div id="battery_level">100</div>
+                <p>Battery</p>
+            </div>
+        </div>
+        <div class="flex gap-1-5 flex-direction-column">
+            <h2>Settings</h2>
+            <sm-switch data-id="power" onchange="handleToggle(event)">
+                <h4 slot="left" class="margin-right-1">Turn on power</h4>
+            </sm-switch>
+            <sm-switch data-id="zone-1" onchange="handleToggle(event)" disabled>
+                <h4 slot="left" class="margin-right-1">Zone 1</h4>
+            </sm-switch>
+            <sm-switch data-id="zone-2" onchange="handleToggle(event)" disabled>
+                <h4 slot="left" class="margin-right-1">Zone 2</h4>
+            </sm-switch>
+            <div class="flex align-center space-between gap-1-5">
+                <h4>Select color</h4>
+                <sl-color-picker id="color_input" value="#FF55A7" label=" Select a color" disabled></sl-color-picker>
+            </div>
         </div>
     </section>
     <details>
@@ -89,14 +100,25 @@
     </script>
     <script>
         window.addEventListener('load', async () => {
-            pseudoDisable(document.getElementById('settings_section'), true);
+            if ('bluetooth' in navigator) {
+                // Web Bluetooth API is supported
+                // pseudoDisable(document.getElementById('settings_section'), true);
+            } else {
+                // Web Bluetooth API is not supported
+                pseudoDisable(document.getElementById('settings_section'), false);
+                document.getElementById('connect_button').disabled = true;
+                document.getElementById('settings_section').innerHTML = `
+                    <h2>Web Bluetooth API is not supported</h2>
+                    <p>Please use Google chrome, Microsoft edge, Brave or Opera</p>
+                `
+            }
         });
         let device;
-        let characteristic;
+        let characteristics = {}
         const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        const characteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-        // const characteristicUuid = 'heart_rate_measurement';
-        document.getElementById('connect_Button').addEventListener('click', async () => {
+        // const serviceUuid = 'battery_service';
+        const deviceCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        document.getElementById('connect_button').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -105,17 +127,29 @@
 
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(serviceUuid);
-                characteristic = await service.getCharacteristic(characteristicUuid);
-
+                const [customCharacteristic, batteryCharacteristic] = await Promise.all([
+                    service.getCharacteristic(deviceCharacteristicUuid),
+                    service.getCharacteristic('battery_level')
+                ]);
+                characteristics = {
+                    customCharacteristic,
+                    batteryCharacteristic
+                }
+                characteristics.batteryCharacteristic.readValue().then((value) => {
+                    setBatteryLevel(value.getUint8(0));
+                }).catch((err) => {
+                    console.log('Error reading battery:', err);
+                });
                 console.log('Connected to BLE device:', device);
                 pseudoDisable(document.getElementById('settings_section'), false);
-                document.getElementById('connect_Button').disabled = true;
-                document.getElementById('connect_Button').textContent = 'Connected';
+                document.getElementById('connect_button').disabled = true;
+                document.getElementById('connect_button').textContent = 'Connected';
+                document.getElementById('connect_button').dataset.state = 'connected'
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
-                // Subscribe to characteristic notifications
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+                // Subscribe to battery characteristic notifications
+                await characteristics.batteryCharacteristic.startNotifications();
+                characteristics.batteryCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
                 // Add disconnection listener
                 device.addEventListener('gattserverdisconnected', handleDisconnect);
             } catch (error) {
@@ -159,30 +193,38 @@
             if (!device) return;
             try {
                 const data = new TextEncoder('utf-8').encode(value);
-                await characteristic.writeValueWithResponse(data);
+                await characteristics.customCharacteristic.writeValueWithResponse(data);
                 console.log('Value sent:', value);
             } catch (error) {
                 console.error('Error sending value:', error);
             }
         }
         function handleNotifications(event) {
-            console.log('Received value:', event.target.value)
-            const value = new TextDecoder('utf-8').decode(event.target.value.buffer);
-            console.log('Received value:', value);
-
-            // Update the UI to display the received value
-            document.getElementById('receivedValue').innerText = `Received Value: ${value}`;
+            const value = event.target.value.getUint8(0);
+            setBatteryLevel(value);
         }
         function handleDisconnect(event) {
             console.log('Disconnected from BLE device:', event);
             pseudoDisable(document.getElementById('settings_section'), true);
-            document.getElementById('connect_Button').disabled = false;
-            document.getElementById('connect_Button').textContent = 'Connect to Huey';
+            document.getElementById('connect_button').disabled = false;
+            document.getElementById('connect_button').textContent = 'Connect to Huey';
+            document.getElementById('connect_button').dataset.state = 'disconnected'
             document.getElementById('sendButton').disabled = true;
             document.getElementById('value_input').disabled = true;
-            characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
+            characteristics.batteryCharacteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
             device.removeEventListener('gattserverdisconnected', handleDisconnect);
             device = null;
+        }
+        function setBatteryLevel(batteryLevel = 100) {
+            const batteryIndicator = document.getElementById('battery_indicator');
+            const batteryLevelText = document.getElementById('battery_level');
+            batteryIndicator.style.setProperty('--battery-level', batteryLevel);
+            batteryLevelText.textContent = batteryLevel;
+            if (batteryLevel < 20) {
+                document.getElementById('battery_indicator_wrapper').dataset.low = true;
+            } else {
+                delete document.getElementById('battery_indicator_wrapper').dataset.low;
+            }
         }
     </script>
 </body>
