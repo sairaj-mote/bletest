@@ -229,7 +229,12 @@
             } else {
                 retryCount++;
                 // try to reconnect
-                await connectToDevice(device);
+                if (retryCount < RETRY_LIMIT)
+                    await connectToDevice(device);
+                else {
+                    device = null;
+                    handleDisconnect();
+                }
             }
         }
         function setBatteryLevel(batteryLevel = 100) {
