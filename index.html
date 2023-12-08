@@ -119,7 +119,7 @@
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002', 'battery_service']
+                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002']
                 });
                 await connectToDevice(device);
             } catch (error) {
