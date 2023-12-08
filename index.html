@@ -133,6 +133,7 @@
                 const services = await server.getPrimaryServices();
                 console.log('Services:', services);
                 const characteristics = await services[0].getCharacteristics()
+                console.log('Characteristics:', characteristics);
                 characteristic = characteristics[0];
                 characteristic.readValue().then((value) => {
                     setBatteryLevel(value.getUint8(0));
