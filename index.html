@@ -119,7 +119,7 @@
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002']
+                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002', 'battery_service']
                 });
                 await connectToDevice(device);
             } catch (error) {
@@ -147,7 +147,7 @@
                 document.getElementById('connect_button').dataset.state = 'connected'
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
-                // Subscribe to battery characteristic notifications
+                // Subscribe to characteristic notifications
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
                 // Add disconnection listener
@@ -218,7 +218,6 @@
         async function handleDisconnect() {
             console.log('Disconnected from BLE device:', device);
             if (characteristic) {
-                characteristic.stopNotifications();
                 characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
             }
             if (!device) {
