@@ -225,8 +225,8 @@
                 document.getElementById('connect_button').dataset.state = 'disconnected'
                 document.getElementById('sendButton').disabled = true;
                 document.getElementById('value_input').disabled = true;
-                device.removeEventListener('gattserverdisconnected', handleDisconnect);
             } else {
+                device.removeEventListener('gattserverdisconnected', handleDisconnect);
                 retryCount++;
                 // try to reconnect
                 if (retryCount < RETRY_LIMIT)
