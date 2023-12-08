@@ -114,28 +114,25 @@
             }
         });
         let device;
-        let characteristics = {}
-        const serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        // const serviceUuid = 'battery_service';
-        const deviceCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        let characteristic
         document.getElementById('connect_button').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [serviceUuid, 'battery_service'],
                 });
-
+                await connectToDevice(device);
+            } catch (error) {
+                console.error('Error connecting to BLE device:', error);
+            }
+        });
+        let retryTimeout;
+        async function connectToDevice(device) {
+            try {
                 const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(serviceUuid);
-                const [customCharacteristic, batteryCharacteristic] = await Promise.all([
-                    service.getCharacteristic(deviceCharacteristicUuid),
-                    service.getCharacteristic('battery_level')
-                ]);
-                characteristics = {
-                    customCharacteristic,
-                    batteryCharacteristic
-                }
-                characteristics.batteryCharacteristic.readValue().then((value) => {
+                const services = await server.getPrimaryServices();
+                const characteristics = await services[0].getCharacteristics()
+                characteristic = characteristics[0];
+                characteristic.readValue().then((value) => {
                     setBatteryLevel(value.getUint8(0));
                 }).catch((err) => {
                     console.log('Error reading battery:', err);
@@ -148,14 +145,24 @@
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
                 // Subscribe to battery characteristic notifications
-                await characteristics.batteryCharacteristic.startNotifications();
-                characteristics.batteryCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
                 // Add disconnection listener
                 device.addEventListener('gattserverdisconnected', handleDisconnect);
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
+                retryTimeout = setTimeout(() => {
+                    retryCount = 0;
+                }, 10000);
+                console.log('Retries:', retryCount);
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
+                device = null;
+                handleDisconnect();
             }
-        });
+        }
         document.getElementById('sendButton').addEventListener('click', async () => {
             const value = document.getElementById('value_input').value;
             await sendValue(value);
@@ -193,7 +200,7 @@
             if (!device) return;
             try {
                 const data = new TextEncoder('utf-8').encode(value);
-                await characteristics.customCharacteristic.writeValueWithResponse(data);
+                await characteristic.writeValueWithResponse(data);
                 console.log('Value sent:', value);
             } catch (error) {
                 console.error('Error sending value:', error);
@@ -203,17 +210,27 @@
             const value = event.target.value.getUint8(0);
             setBatteryLevel(value);
         }
-        function handleDisconnect(event) {
-            console.log('Disconnected from BLE device:', event);
-            pseudoDisable(document.getElementById('settings_section'), true);
-            document.getElementById('connect_button').disabled = false;
-            document.getElementById('connect_button').textContent = 'Connect to Huey';
-            document.getElementById('connect_button').dataset.state = 'disconnected'
-            document.getElementById('sendButton').disabled = true;
-            document.getElementById('value_input').disabled = true;
-            characteristics.batteryCharacteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
-            device.removeEventListener('gattserverdisconnected', handleDisconnect);
-            device = null;
+        let RETRY_LIMIT = 10;
+        let retryCount = 0;
+        async function handleDisconnect() {
+            console.log('Disconnected from BLE device:', device);
+            if (characteristic) {
+                characteristic.stopNotifications();
+                characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
+            }
+            if (!device) {
+                pseudoDisable(document.getElementById('settings_section'), true);
+                document.getElementById('connect_button').disabled = false;
+                document.getElementById('connect_button').textContent = 'Connect to Huey';
+                document.getElementById('connect_button').dataset.state = 'disconnected'
+                document.getElementById('sendButton').disabled = true;
+                document.getElementById('value_input').disabled = true;
+                device.removeEventListener('gattserverdisconnected', handleDisconnect);
+            } else {
+                retryCount++;
+                // try to reconnect
+                await connectToDevice(device);
+            }
         }
         function setBatteryLevel(batteryLevel = 100) {
             const batteryIndicator = document.getElementById('battery_indicator');
