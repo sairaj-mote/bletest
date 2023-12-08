@@ -119,6 +119,7 @@
             try {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
+                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002', 'battery_service']
                 });
                 await connectToDevice(device);
             } catch (error) {
@@ -130,6 +131,7 @@
             try {
                 const server = await device.gatt.connect();
                 const services = await server.getPrimaryServices();
+                console.log('Services:', services);
                 const characteristics = await services[0].getCharacteristics()
                 characteristic = characteristics[0];
                 characteristic.readValue().then((value) => {
