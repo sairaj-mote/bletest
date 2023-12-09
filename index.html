@@ -118,9 +118,9 @@
         document.getElementById('connect_button').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['efe124c4-959c-11ee-b9d1-0242ac120002', 'battery_service']
+                    acceptAllDevices: true
                 });
+                console.log('Device:', device);
                 await connectToDevice(device);
             } catch (error) {
                 console.error('Error connecting to BLE device:', error);
@@ -130,6 +130,7 @@
         async function connectToDevice(device) {
             try {
                 const server = await device.gatt.connect();
+                console.log('Server:', server)
                 const services = await server.getPrimaryServices();
                 console.log('Services:', services);
                 const characteristics = await services[0].getCharacteristics()
