@@ -48,17 +48,17 @@
         </div>
         <div class="flex gap-1-5 flex-direction-column">
             <h2>Settings</h2>
-            <sm-switch data-id="power" onchange="handleToggle(event)">
+            <sm-switch data-id="" onchange="handleToggle(event)">
                 <h4 slot="left" class="margin-right-1">Turn on power</h4>
             </sm-switch>
-            <sm-switch data-id="zone-1" onchange="handleToggle(event)" disabled>
-                <h4 slot="left" class="margin-right-1">Zone 1</h4>
-            </sm-switch>
-            <sm-switch data-id="zone-2" onchange="handleToggle(event)" disabled>
-                <h4 slot="left" class="margin-right-1">Zone 2</h4>
-            </sm-switch>
+            <ul id="zone_settings" class="grid gap-1-5"></ul>
             <div class="flex align-center space-between gap-1-5">
-                <h4>Select color</h4>
+                <div class="grid gap-0-3">
+                    <h4>Select color</h4>
+                    <p id="active_zone_label">
+                        Changes color of zone 1, 2, 3 and 4
+                    </p>
+                </div>
                 <sl-color-picker id="color_input" value="#48d2a6" label=" Select a color" disabled></sl-color-picker>
             </div>
         </div>
@@ -102,7 +102,7 @@
         window.addEventListener('load', async () => {
             if ('bluetooth' in navigator) {
                 // Web Bluetooth API is supported
-                // pseudoDisable(document.getElementById('settings_section'), true);
+                pseudoDisable(document.getElementById('settings_section'), true);
             } else {
                 // Web Bluetooth API is not supported
                 pseudoDisable(document.getElementById('settings_section'), false);
@@ -118,7 +118,10 @@
         document.getElementById('connect_button').addEventListener('click', async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true
+                    acceptAllDevices: true,
+                    optionalServices: [
+                        "efe124c4-959c-11ee-b9d1-0242ac120002"
+                    ]
                 });
                 console.log('Device:', device);
                 await connectToDevice(device);
@@ -127,6 +130,7 @@
             }
         });
         let retryTimeout;
+        let valueReadInterval
         async function connectToDevice(device) {
             try {
                 const server = await device.gatt.connect();
@@ -136,11 +140,15 @@
                 const characteristics = await services[0].getCharacteristics()
                 console.log('Characteristics:', characteristics);
                 characteristic = characteristics[0];
-                characteristic.readValue().then((value) => {
-                    setBatteryLevel(value.getUint8(0));
-                }).catch((err) => {
-                    console.log('Error reading battery:', err);
-                });
+                if (valueReadInterval)
+                    clearInterval(valueReadInterval)
+                valueReadInterval = setInterval(() => {
+                    characteristic.readValue().then((value) => {
+                        setBatteryLevel(value.getUint8(0));
+                    }).catch((err) => {
+                        console.log('Error reading battery:', err);
+                    });
+                }, 10000);
                 console.log('Connected to BLE device:', device);
                 pseudoDisable(document.getElementById('settings_section'), false);
                 document.getElementById('connect_button').disabled = true;
@@ -149,8 +157,8 @@
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
                 // Subscribe to characteristic notifications
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+                // await characteristic.startNotifications();
+                // characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
                 // Add disconnection listener
                 device.addEventListener('gattserverdisconnected', handleDisconnect);
                 if (retryTimeout) {
@@ -180,24 +188,92 @@
             const b = `${parseInt(color.substring(5, 7), 16)}`.padStart(3, '0');
             sendValue(`${r}${g}${b}`);
         }, 0));
+
+        [
+            {
+                id: 'A',
+                name: 'Zone 1',
+                checked: false,
+                disabled: true
+            },
+            {
+                id: 'B',
+                name: 'Zone 2',
+                checked: false,
+                disabled: true
+            },
+            {
+                id: 'C',
+                name: 'Zone 3',
+                checked: false,
+                disabled: true
+            },
+            {
+                id: 'D',
+                name: 'Zone 4',
+                checked: false,
+                disabled: true
+            }
+        ].forEach((zone) => {
+            const li = document.createElement('li');
+            li.className = 'flex align-center gap-1 zone_settings__item';
+            li.innerHTML = `
+                <h4 class="flex-1">${zone.name}</h4>
+                <button title="Lock color" data-zone-id=${zone.id} data-unlocked onclick="toggleLock(event)">
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
+                </button>
+                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)"> </sm-switch>
+            `;
+            document.getElementById('zone_settings').appendChild(li);
+        });
         function handleToggle(e) {
-            switch (e.target.dataset.id) {
-                case 'power':
-                    sendValue(e.target.checked ? '1' : '0');
-                    document.querySelector(`[data-id='zone-1']`).disabled = !e.target.checked;
-                    document.querySelector(`[data-id='zone-2']`).disabled = !e.target.checked;
-                    document.getElementById('color_input').disabled = !e.target.checked;
-                    if (!e.target.checked) {
-                        document.querySelector(`[data-id='zone-1']`).checked = false;
-                        document.querySelector(`[data-id='zone-2']`).checked = false;
-                    }
-                    break;
-                case 'zone-1':
-                    sendValue(e.target.checked ? 'A1' : 'A0');
-                    break;
-                case 'zone-2':
-                    sendValue(e.target.checked ? 'B1' : 'B0');
-                    break;
+            const zoneId = e.target.dataset.zoneId || '';
+            if (zoneId === '') {
+                sendValue(e.target.checked ? '1' : '0');
+                document.querySelectorAll(`[data-group='zone']`).forEach((el) => {
+                    if (!e.target.checked)
+                        el.checked = false;
+                });
+                pseudoDisable(document.getElementById('zone_settings'), !e.target.checked);
+                document.getElementById('color_input').disabled = !e.target.checked;
+            } else {
+                sendValue(e.target.checked ? `${zoneId}1` : `000000000`);
+            }
+        }
+        function toggleLock(e) {
+            const button = e.target.closest('button');
+            const zoneId = button.dataset.zoneId;
+            const locked = button.dataset.hasOwnProperty('locked');
+            let activeZones = [];
+            if (locked) {
+                delete button.dataset.locked;
+                button.dataset.unlocked = true;
+                button.title = 'Lock color';
+                button.innerHTML = `
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
+                `
+                sendValue(`${zoneId}1`);
+            } else {
+                delete button.dataset.unlocked;
+                button.dataset.locked = true;
+                button.title = 'Unlock color';
+                button.innerHTML = `
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0z" fill="none"/><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                `
+                sendValue(`${zoneId}0`);
+
+            }
+            document.querySelectorAll('.zone_settings__item').forEach((el, index) => {
+                if (el.querySelector('[data-unlocked]'))
+                    activeZones.push(`${index + 1}`)
+            })
+            if (activeZones.length === 0) {
+                document.getElementById('color_input').disabled = true;
+                document.getElementById('active_zone_label').textContent = 'Unlock a zone to change color'
+            } else {
+                const intl = new Intl.ListFormat('en');
+                document.getElementById('active_zone_label').textContent = `Changes color of zone ${intl.format(activeZones)}`
+                document.getElementById('color_input').disabled = false;
             }
         }
         async function sendValue(value) {
@@ -218,8 +294,10 @@
         let retryCount = 0;
         async function handleDisconnect() {
             console.log('Disconnected from BLE device:', device);
+            if (valueReadInterval)
+                clearInterval(valueReadInterval)
             if (characteristic) {
-                characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
+                // characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
             }
             if (!device) {
                 pseudoDisable(document.getElementById('settings_section'), true);
