@@ -82,19 +82,29 @@ a {
 a:any-link:focus-visible {
   outline: rgba(var(--text-color), 1) 0.1rem solid;
 }
-input[type="datetime-local"] {
-  width: 100%;
-  padding: 0.8rem 0.6rem;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  background-color: rgba(var(--text-color), 0.06);
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 0.1rem var(--accent-color);
+input {
+  accent-color: var(--accent-color);
+  &[type="datetime-local"] {
+    width: 100%;
+    padding: 0.8rem 0.6rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    background-color: rgba(var(--text-color), 0.06);
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 0.1rem var(--accent-color);
+    }
+  }
+  &[type="range"] {
+    cursor: grab;
+    background: rgba(var(--text-color), 0.06);
+    &:active {
+      cursor: grabbing;
+    }
   }
 }
 button,

@@ -61,6 +61,17 @@
                 </div>
                 <sl-color-picker id="color_input" value="#48d2a6" label=" Select a color" disabled></sl-color-picker>
             </div>
+            <label class="grid gap-0-5">
+                <div class="flex align-center gap-0-5">
+                    <h4>Set brightness</h4>
+                    <p>(
+                        <output id="brightness_value" for="brightness_input">50%</output>
+                        )
+                    </p>
+                </div>
+                <input type="range" min="0" max="255" value="127" step="1" class="slider" id="brightness_input"
+                    oninput="handleBrightnessInput(event)">
+            </label>
         </div>
     </section>
     <details>
@@ -222,7 +233,7 @@
                 <button title="Lock color" data-zone-id=${zone.id} data-unlocked onclick="toggleLock(event)">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
                 </button>
-                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)"> </sm-switch>
+                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)" checked> </sm-switch>
             `;
             document.getElementById('zone_settings').appendChild(li);
         });
@@ -237,7 +248,7 @@
                 pseudoDisable(document.getElementById('zone_settings'), !e.target.checked);
                 document.getElementById('color_input').disabled = !e.target.checked;
             } else {
-                sendValue(e.target.checked ? `${zoneId}1` : `000000000`);
+                sendValue(e.target.checked ? `${zoneId}1` : `${zoneId}0`);
             }
         }
         function toggleLock(e) {
@@ -260,7 +271,7 @@
                 button.innerHTML = `
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0z" fill="none"/><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
                 `
-                sendValue(`${zoneId}0`);
+                sendValue(`${zoneId}2`);
 
             }
             document.querySelectorAll('.zone_settings__item').forEach((el, index) => {
@@ -329,6 +340,14 @@
                 delete document.getElementById('battery_indicator_wrapper').dataset.low;
             }
         }
+        const debouncedSendValue = debounce((value) => {
+            sendValue(value);
+        }, 100);
+        const handleBrightnessInput = (e) => {
+            const value = e.target.value;
+            document.getElementById('brightness_value').textContent = parseInt(value / 2.55) + '%';
+            debouncedSendValue(`${value}`.padStart(3, '0'));
+        };
     </script>
 </body>
 
