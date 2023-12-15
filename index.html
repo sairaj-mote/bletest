@@ -70,7 +70,7 @@
                     </p>
                 </div>
                 <input type="range" min="0" max="255" value="127" step="1" class="slider" id="brightness_input"
-                    oninput="handleBrightnessInput(event)">
+                    oninput="handleBrightnessInput(event)" disabled>
             </label>
         </div>
     </section>
@@ -247,6 +247,7 @@
                 });
                 pseudoDisable(document.getElementById('zone_settings'), !e.target.checked);
                 document.getElementById('color_input').disabled = !e.target.checked;
+                document.getElementById('brightness_input').disabled = !e.target.checked;
             } else {
                 sendValue(e.target.checked ? `${zoneId}1` : `${zoneId}0`);
             }
