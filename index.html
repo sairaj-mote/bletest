@@ -240,10 +240,6 @@
             const zoneId = e.target.dataset.zoneId || '';
             if (zoneId === '') {
                 sendValue(e.target.checked ? '1' : '0');
-                document.querySelectorAll(`[data-group='zone']`).forEach((el) => {
-                    if (!e.target.checked)
-                        el.checked = false;
-                });
                 pseudoDisable(document.getElementById('zone_settings'), !e.target.checked);
                 document.getElementById('color_input').disabled = !e.target.checked;
                 document.getElementById('brightness_input').disabled = !e.target.checked;
