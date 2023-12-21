@@ -59,7 +59,8 @@
                         Changes color of zone 1, 2, 3 and 4
                     </p>
                 </div>
-                <sl-color-picker id="color_input" value="#48d2a6" label=" Select a color" disabled></sl-color-picker>
+                <sl-color-picker id="color_input" value="#48d2a6" label="Select a color" format="hsv" no-format-toggle
+                    disabled></sl-color-picker>
             </div>
             <label class="grid gap-0-5">
                 <div class="flex align-center gap-0-5">
@@ -142,6 +143,15 @@
         });
         let retryTimeout;
         let valueReadInterval
+        function readBattery() {
+            if (device) {
+                characteristics[1].readValue().then((value) => {
+                    setBatteryLevel(value.getUint8(0));
+                }).catch((err) => {
+                    console.log('Error reading battery:', err);
+                });
+            }
+        }
         async function connectToDevice(device) {
             try {
                 const server = await device.gatt.connect();
@@ -152,13 +162,8 @@
                 console.log('Characteristics:', characteristics);
                 if (valueReadInterval)
                     clearInterval(valueReadInterval)
-                valueReadInterval = setInterval(() => {
-                    characteristics[1].readValue().then((value) => {
-                        setBatteryLevel(value.getUint8(0));
-                    }).catch((err) => {
-                        console.log('Error reading battery:', err);
-                    });
-                }, 10000);
+                valueReadInterval = setInterval(readBattery, 10000);
+                readBattery()
                 console.log('Connected to BLE device:', device);
                 pseudoDisable(document.getElementById('settings_section'), false);
                 document.getElementById('connect_button').disabled = true;
@@ -167,8 +172,8 @@
                 document.getElementById('sendButton').disabled = false;
                 document.getElementById('value_input').disabled = false;
                 // Subscribe to characteristic notifications
-                // await characteristic.startNotifications();
-                // characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+                // await characteristics[1].startNotifications();
+                // characteristics[1].addEventListener('characteristicvaluechanged', handleNotifications);
                 // Add disconnection listener
                 device.addEventListener('gattserverdisconnected', handleDisconnect);
                 if (retryTimeout) {
@@ -185,18 +190,21 @@
                 handleDisconnect();
             }
         }
-        document.getElementById('sendButton').addEventListener('click', async () => {
-            const value = document.getElementById('value_input').value;
-            await sendValue(value);
-        });
         document.getElementById('color_input').addEventListener('sl-change', debounce(() => {
-            const color = document.getElementById('color_input').value
-            document.getElementById('settings_section').style.setProperty('--selected-color', color);
-            // convert hex to rgb with 3digits each. pad
-            const r = `${parseInt(color.substring(1, 3), 16)}`.padStart(3, '0');
-            const g = `${parseInt(color.substring(3, 5), 16)}`.padStart(3, '0');
-            const b = `${parseInt(color.substring(5, 7), 16)}`.padStart(3, '0');
-            sendValue(`${r}${g}${b}`);
+            let color = document.getElementById('color_input').value
+            if (color.includes('hsv')) {
+                color = color.replace('hsv(', '').replace(')', '').split(',').map((v, index) => {
+                    v = parseInt(v)
+                    v = (index === 0) ? parseInt(v / 360 * 255) : parseInt(v / 100 * 255);
+                    return v.toString().padStart(3, '0');
+                }).join('')
+            } else if (color.includes('rgb')) {
+                color = color.replace('rgb(', '').replace(')', '').split(',').map((c) => {
+                    return parseInt(c).toString().padStart(3, '0');
+                }).join('')
+            }
+            sendValue(color);
+            document.getElementById('settings_section').style.setProperty('--selected-color', document.getElementById('color_input').getFormattedValue('hex'));
         }, 0));
 
         [
@@ -232,7 +240,7 @@
                 <button title="Lock color" data-zone-id=${zone.id} data-unlocked onclick="toggleLock(event)">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
                 </button>
-                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)" checked> </sm-switch>
+                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)" checked disabled> </sm-switch>
             `;
             document.getElementById('zone_settings').appendChild(li);
         });
@@ -240,6 +248,9 @@
             const zoneId = e.target.dataset.zoneId || '';
             if (zoneId === '') {
                 sendValue(e.target.checked ? '1' : '0');
+                document.querySelectorAll('.zone_settings__item').forEach((el) => {
+                    el.querySelector('sm-switch').disabled = !e.target.checked;
+                })
                 pseudoDisable(document.getElementById('zone_settings'), !e.target.checked);
                 document.getElementById('color_input').disabled = !e.target.checked;
                 document.getElementById('brightness_input').disabled = !e.target.checked;
@@ -303,9 +314,9 @@
             console.log('Disconnected from BLE device:', device);
             if (valueReadInterval)
                 clearInterval(valueReadInterval)
-            if (characteristic[1]) {
-                // characteristic.removeEventListener('characteristicvaluechanged', handleNotifications);
-            }
+            // if (characteristics[1]) {
+            //     characteristics[1].removeEventListener('characteristicvaluechanged', handleNotifications);
+            // }
             if (!device) {
                 pseudoDisable(document.getElementById('settings_section'), true);
                 document.getElementById('connect_button').disabled = false;
