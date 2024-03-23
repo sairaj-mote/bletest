@@ -4,37 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Huey</title>
+    <title>TuBGR</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/themes/dark.css" />
     <link rel="stylesheet" href="css/main.min.css">
-    <link rel="shortcut icon" href="huey.svg" type="image/x-icon">
 </head>
 
-<body data-theme="dark">
+<body data-theme="dark" class="sl-theme-dark">
     <header id="main_header" class="flex align-center space-between gap-1-5">
-        <div class="flex">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <g clip-path="url(#clip0_204_2)">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M18.452 2C18.452 0.89543 17.5468 0 16.4423 0V0C15.3377 0 14.4325 0.895431 14.4325 2V4.81085C14.4325 6.35045 16.1138 7.30429 17.4471 6.53449V6.53449C18.0659 6.17723 18.452 5.51417 18.452 4.79964V2ZM18.452 14.0597C18.452 12.5201 16.7707 11.5662 15.4374 12.336V12.336C14.8186 12.6933 14.4325 13.3563 14.4325 14.0709V22C14.4325 23.1046 15.3377 24 16.4423 24V24C17.5468 24 18.452 23.1046 18.452 22V14.0597Z"
-                        fill="#32FFC1" />
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M9.56744 2C9.56744 0.895431 8.6623 0 7.55773 0V0C6.45316 0 5.54802 0.895433 5.54802 2V9.94033C5.54802 11.4799 7.22925 12.4338 8.56258 11.664V11.664C9.18138 11.3067 9.56744 10.6437 9.56744 9.92912V2ZM9.56744 19.1891C9.56744 17.6495 7.88621 16.6957 6.55287 17.4655V17.4655C5.93407 17.8228 5.54802 18.4858 5.54802 19.2004V22C5.54802 23.1046 6.45316 24 7.55773 24V24C8.6623 24 9.56744 23.1046 9.56744 22V19.1891Z"
-                        fill="#6272FF" />
-                </g>
-                <defs>
-                    <clipPath id="clip0_204_2">
-                        <rect width="24" height="24" fill="white" />
-                    </clipPath>
-                </defs>
-            </svg>
-            <h3>Huey</h3>
-        </div>
-        <button id="connect_button" class="button button--primary">Connect to Huey</button>
+        <h3>TuBGR</h3>
+        <button id="connect_button" class="button button--primary">Connect to TuBGR</button>
     </header>
     <section id="settings_section" class="flex gap-2 flex-direction-column" data-disabled inert>
         <div id="battery_indicator_wrapper">
@@ -51,7 +34,6 @@
             <sm-switch data-id="" onchange="handleToggle(event)">
                 <h4 slot="left" class="margin-right-1">Turn on power</h4>
             </sm-switch>
-            <ul id="zone_settings" class="grid gap-1-5"></ul>
             <div class="flex align-center space-between gap-1-5">
                 <div class="grid gap-0-3">
                     <h4>Select color</h4>
@@ -60,7 +42,7 @@
                     </p>
                 </div>
                 <sl-color-picker id="color_input" value="#48d2a6" label="Select a color" format="hsv"
-                    disabled></sl-color-picker>
+                    no-format-toggle></sl-color-picker>
             </div>
             <label class="grid gap-0-5">
                 <div class="flex align-center gap-0-5">
@@ -71,8 +53,15 @@
                     </p>
                 </div>
                 <input type="range" min="0" max="255" value="127" step="1" class="slider" id="brightness_input"
-                    oninput="handleBrightnessInput(event)" disabled>
+                    oninput="handleBrightnessInput(event)">
             </label>
+            <h5>Active zones</h5>
+            <label class="grid gap-0-5">
+                <h4>Set no. of zones</h4>
+                <input type="range" min="1" max="6" value="4" step="1" class="slider" id="segment_input"
+                    oninput="handleZoneInput(event)">
+            </label>
+            <ul id="zone_settings" class="grid gap-1-5"></ul>
         </div>
     </section>
     <details>
@@ -84,7 +73,7 @@
     </details>
     <div id="receivedValue"></div>
     <script type="module"
-        src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/components/color-picker/color-picker.js"></script>
+        src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.14.0/cdn/components/color-picker/color-picker.js"></script>
     <script src="components.min.js"></script>
     <script>
         const debounce = (callback, wait) => {
@@ -207,43 +196,33 @@
             document.getElementById('settings_section').style.setProperty('--selected-color', document.getElementById('color_input').getFormattedValue('hex'));
         }, 0));
 
-        [
-            {
-                id: 'A',
-                name: 'Zone 1',
-                checked: false,
-                disabled: true
-            },
-            {
-                id: 'B',
-                name: 'Zone 2',
-                checked: false,
-                disabled: true
-            },
-            {
-                id: 'C',
-                name: 'Zone 3',
-                checked: false,
-                disabled: true
-            },
-            {
-                id: 'D',
-                name: 'Zone 4',
-                checked: false,
-                disabled: true
+        function renderZones(zones = 4) {
+            document.getElementById('zone_settings').innerHTML = '';
+            const zoneIds = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const totalZones = []
+            for (let i = 0; i < zones; i++) {
+                totalZones.push(`${i + 1}`)
+                const li = document.createElement('li');
+                li.className = 'flex align-center gap-1 zone_settings__item';
+                li.innerHTML = `
+                    <h4 class="flex-1">Zone ${i + 1}</h4>
+                    <button title="Lock color" data-zone-id=${zoneIds[i]} data-unlocked onclick="toggleLock(event)">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
+                    </button>
+                    <sm-switch data-group="zone" data-zone-id=${zoneIds[i]} onchange="handleToggle(event)" checked disabled> </sm-switch>
+                `;
+                document.getElementById('zone_settings').appendChild(li);
             }
-        ].forEach((zone) => {
-            const li = document.createElement('li');
-            li.className = 'flex align-center gap-1 zone_settings__item';
-            li.innerHTML = `
-                <h4 class="flex-1">${zone.name}</h4>
-                <button title="Lock color" data-zone-id=${zone.id} data-unlocked onclick="toggleLock(event)">
-                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"> <path d="M0 0h24v24H0V0z" fill="none" /> <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h2c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" /> </svg>
-                </button>
-                <sm-switch data-group="zone" data-zone-id=${zone.id} onchange="handleToggle(event)" checked disabled> </sm-switch>
-            `;
-            document.getElementById('zone_settings').appendChild(li);
-        });
+            const intl = new Intl.ListFormat('en');
+            document.getElementById('active_zone_label').textContent = `Changes color of zone ${intl.format(totalZones)}`
+        }
+        renderZones();
+        handleZoneInput = (e) => {
+            const value = e.target.value;
+            renderZones(value);
+            sendValue(`S${value}`);
+        }
+
         function handleToggle(e) {
             const zoneId = e.target.dataset.zoneId || '';
             if (zoneId === '') {
@@ -320,7 +299,7 @@
             if (!device) {
                 pseudoDisable(document.getElementById('settings_section'), true);
                 document.getElementById('connect_button').disabled = false;
-                document.getElementById('connect_button').textContent = 'Connect to Huey';
+                document.getElementById('connect_button').textContent = 'Connect to TuBGR';
                 document.getElementById('connect_button').dataset.state = 'disconnected'
                 document.getElementById('sendButton').disabled = true;
                 document.getElementById('value_input').disabled = true;

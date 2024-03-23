@@ -639,17 +639,6 @@ ul {
   display: none;
 }
 
-.password-field label {
-  display: flex;
-  flex-shrink: 0;
-}
-.password-field label input:checked ~ .visible {
-  display: none;
-}
-.password-field label input:not(:checked) ~ .invisible {
-  display: none;
-}
-
 .multi-state-button {
   display: grid;
   text-align: center;
